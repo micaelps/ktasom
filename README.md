@@ -51,7 +51,9 @@ A pasta `~/.local/bin` precisa estar no PATH. O comando aponta para este arquivo
 
 ### Windows
 
-Não é preciso criar o comando `ktasom`. No Windows, recomendo usar a [interface gráfica](#interface-gráfica) ou chamar a CLI direto na pasta do projeto, como mostra a seção [Uso](#uso).
+No Windows, recomendo usar a [interface gráfica](#interface-gráfica) ou chamar a CLI direto na pasta do projeto, como mostra a seção [Uso](#uso).
+
+Se quiser chamar a CLI de qualquer diretório, adicione a pasta do projeto ao PATH e use `ktasom.py` no lugar de `python ktasom.py`.
 
 ## Uso
 
