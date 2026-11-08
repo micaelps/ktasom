@@ -2,10 +2,12 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from ktasom import extract_links
+from ktasom import DownloadJob, extract_links
 
 SCRIPT = Path(__file__).with_name("ktasom.py")
 FAKE_YT_DLP = """#!/bin/sh
@@ -41,7 +43,7 @@ class ExtractLinksTest(unittest.TestCase):
         self.assertEqual([], extract_links("https://vimeo.com/123,https://notyoutube.com/x\n"))
 
 
-class CliTest(unittest.TestCase):
+class FakeToolsTestCase(unittest.TestCase):
     def setUp(self):
         temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(temp_dir.cleanup)
@@ -59,6 +61,68 @@ class CliTest(unittest.TestCase):
         fake.write_text(body)
         fake.chmod(0o755)
 
+
+class DownloadJobTest(FakeToolsTestCase):
+    def setUp(self):
+        super().setUp()
+        self.events = []
+        patched_env = mock.patch.dict(os.environ, {"PATH": f"{self.bin}:/usr/bin:/bin", "FAKE_LOG": str(self.log)})
+        patched_env.start()
+        self.addCleanup(patched_env.stop)
+
+    def run_job(self, *links):
+        job = DownloadJob(links, self.root, lambda *event: self.events.append(event))
+        job.run()
+        return job
+
+    def test_publishes_each_progress_update_as_a_line(self):
+        self.install_fake("yt-dlp", "#!/bin/sh\nprintf '[download]  50%%\\r[download] 100%%\\n'\n")
+
+        self.run_job("https://youtu.be/abc")
+
+        self.assertEqual(
+            [
+                ("link", 1, 1, "https://youtu.be/abc"),
+                ("line", "[download]  50%"),
+                ("line", "[download] 100%"),
+                ("done", []),
+            ],
+            self.events,
+        )
+
+    def test_failed_link_does_not_stop_the_rest_and_is_reported(self):
+        self.run_job("https://youtu.be/broken", "https://youtu.be/ok")
+
+        self.assertEqual(2, len(self.log.read_text().splitlines()))
+        self.assertEqual(("done", ["https://youtu.be/broken"]), self.events[-1])
+
+    def test_reports_link_as_failed_when_yt_dlp_cannot_start(self):
+        (self.bin / "yt-dlp").unlink()
+
+        with mock.patch.dict(os.environ, {"PATH": str(self.bin)}):
+            self.run_job("https://youtu.be/abc")
+
+        self.assertEqual(("done", ["https://youtu.be/abc"]), self.events[-1])
+
+    def test_cancel_stops_current_download_and_skips_remaining_links(self):
+        self.install_fake("yt-dlp", '#!/bin/sh\necho "$@" >> "$FAKE_LOG"\necho started\nexec sleep 30\n')
+        job = DownloadJob(["https://youtu.be/a", "https://youtu.be/b"], self.root, self.cancel_on_first_line)
+        self.job = job
+
+        started = time.monotonic()
+        job.run()
+
+        self.assertLess(time.monotonic() - started, 10)
+        self.assertEqual(1, len(self.log.read_text().splitlines()))
+        self.assertNotIn("done", [event[0] for event in self.events])
+
+    def cancel_on_first_line(self, *event):
+        self.events.append(event)
+        if event[0] == "line":
+            self.job.cancel()
+
+
+class CliTest(FakeToolsTestCase):
     def run_cli(self, *args):
         env = {**os.environ, "PATH": f"{self.bin}:/usr/bin:/bin", "FAKE_LOG": str(self.log)}
         command = [sys.executable, str(SCRIPT), str(self.csv), *args]
