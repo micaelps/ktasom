@@ -1,25 +1,45 @@
 # ktasom
 
-CLI que recebe um link de vídeo do YouTube, ou um CSV com vários, e baixa o áudio em MP3.
+Ferramenta que recebe um link de vídeo do YouTube, ou um CSV com vários, e baixa o áudio em MP3. Funciona pela linha de comando ou por uma interface gráfica simples, no Linux e no Windows.
 
 ## Requisitos
 
-- Python 3.9 ou mais recente
+Estes programas precisam estar instalados, tanto para a CLI quanto para a interface gráfica:
+
+- [Python](https://www.python.org/downloads/) 3.11 ou mais recente
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [ffmpeg](https://ffmpeg.org/), incluindo o `ffprobe`
 - [deno](https://deno.com/), recomendado pelo yt-dlp para extrair vídeos do YouTube
+- Tkinter, só para a interface gráfica. No Windows, ele já vem com o Python
+
+O `yt-dlp`, o `ffmpeg`, o `ffprobe` e o `deno` precisam estar no PATH. Mantenha o yt-dlp atualizado, porque versões antigas costumam parar de funcionar quando o YouTube muda.
+
+### Linux
 
 ```sh
 pipx install "yt-dlp[default]"
-sudo apt install ffmpeg
+sudo apt install ffmpeg python3-tk
 curl -fsSL https://deno.land/install.sh | sh
 ```
 
-Mantenha o yt-dlp atualizado com `pipx upgrade yt-dlp`, porque versões antigas costumam parar de funcionar quando o YouTube muda.
+Para atualizar o yt-dlp, use `pipx upgrade yt-dlp`.
 
 O pacote snap do ffmpeg não serve, porque não expõe o `ffprobe` no PATH e não enxerga todas as pastas do sistema. Se ele estiver instalado, troque pelo do apt com `sudo snap remove ffmpeg`.
 
+### Windows
+
+Instale cada programa seguindo as instruções do site dele, nos links acima, e confirme que os comandos ficaram no PATH. A interface gráfica também encontra os executáveis que estiverem na mesma pasta do `ktasom_gui.pyw`.
+
 ## Instalação
+
+Clone o projeto com o [Git](https://git-scm.com/downloads), ou baixe o [ZIP](https://github.com/micaelps/ktasom/archive/refs/heads/main.zip) e extraia em uma pasta:
+
+```sh
+git clone https://github.com/micaelps/ktasom.git
+cd ktasom
+```
+
+### Linux
 
 Crie o comando `ktasom`, rodando a partir da pasta do projeto:
 
@@ -29,7 +49,13 @@ ln -s "$PWD/ktasom.py" ~/.local/bin/ktasom
 
 A pasta `~/.local/bin` precisa estar no PATH. O comando aponta para este arquivo, então não mova nem apague a pasta do projeto.
 
+### Windows
+
+Não é preciso criar o comando `ktasom`. No Windows, recomendo usar a [interface gráfica](#interface-gráfica) ou chamar a CLI direto na pasta do projeto, como mostra a seção [Uso](#uso).
+
 ## Uso
+
+No Linux:
 
 ```sh
 ktasom "https://youtu.be/XXXXXXXXXXX"
@@ -37,9 +63,29 @@ ktasom links.csv
 ktasom links.csv --output ~/Musicas
 ```
 
+No Windows, a partir da pasta do projeto:
+
+```bat
+python ktasom.py "https://youtu.be/XXXXXXXXXXX"
+python ktasom.py links.csv
+python ktasom.py links.csv --output Musicas
+```
+
 Coloque o link entre aspas, porque o shell interpreta caracteres como `?` e `&`.
 
 Os MP3s vão para o diretório atual quando `--output` não é informado, e cada arquivo recebe o título do vídeo como nome.
+
+## Interface gráfica
+
+O `ktasom_gui.pyw` oferece as mesmas funções da CLI em uma janela, no Linux e no Windows: basta colar um link ou escolher um CSV, escolher a pasta de destino e clicar em **Baixar**. Fechar a janela interrompe o download em andamento, e abrir de novo retoma de onde parou.
+
+No Linux, com os requisitos instalados:
+
+```sh
+python3 ktasom_gui.pyw
+```
+
+No Windows, com os requisitos instalados, dê dois cliques em `ktasom_gui.pyw`, na pasta do projeto.
 
 ## Formato do CSV
 
